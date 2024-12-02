@@ -1,0 +1,202 @@
+Q1: Spark Analysis
+Steps:
+Load the data using Spark:
+
+Use Spark's read.csv method to load the dataset.
+Ensure schema inference or provide schema manually.
+Answers:
+
+Find the date when max cases were reported: Use groupBy and max on CaseCounter.
+Find the CaseCounter when max patients are in the critical stage: Use orderBy on CriticalCounter in descending order and retrieve the first row.
+Find the max recovered counter date: Use groupBy and max on RecoveredCounter.
+Code Example:
+python
+Copy code
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, max
+
+# Initialize SparkSession
+spark = SparkSession.builder.appName("CovidAnalysis").getOrCreate()
+
+# Load data
+file_path = "/path/to/covid-19 dataset.csv"
+data = spark.read.csv(file_path, header=True, inferSchema=True)
+
+# 1. Date with max cases
+max_cases_date = data.orderBy(col("CaseCounter").desc()).select("Date").first()
+
+# 2. CaseCounter when max critical cases
+max_critical = data.orderBy(col("CriticalCounter").desc()).select("CaseCounter").first()
+
+# 3. Max recovered counter date
+max_recovered_date = data.orderBy(col("RecoveredCounter").desc()).select("Date").first()
+
+print(f"Max Cases Date: {max_cases_date}")
+print(f"CaseCounter for Max Critical Cases: {max_critical}")
+print(f"Max Recovered Counter Date: {max_recovered_date}")
+Q2: HBase Operations
+Steps:
+Use HBase shell commands or a Python HBase client like happybase for programmatic interaction.
+Code (Using HBase Shell):
+bash
+Copy code
+# 1. Create a table
+create 'mytable', 'mycolfamily1', 'mycolfamily2', 'mycolfamily3'
+
+# 2. Insert data into "mycolfamily3"
+put 'mytable', 'row1', 'mycolfamily3:col1', 'value1'
+put 'mytable', 'row1', 'mycolfamily3:col2', 'value2'
+
+# 3. Retrieve the entire inserted data
+scan 'mytable'
+
+# 4. Retrieve only data from col1 of "mycolfamily3"
+get 'mytable', 'row1', 'mycolfamily3:col1'
+
+# 5. Drop the table
+disable 'mytable'
+drop 'mytable'
+Q3: PySpark Streaming Program
+Steps:
+Use Spark Structured Streaming to watch the /tmp/inputDir.
+Process incoming files, save them to HDFS in Parquet format.
+Code Example:
+python
+Copy code
+from pyspark.sql import SparkSession
+
+# Initialize SparkSession
+spark = SparkSession.builder.appName("StreamingToHDFS").getOrCreate()
+
+# Monitor input directory
+input_dir = "/tmp/inputDir"
+df = spark.readStream.csv(input_dir, header=True, inferSchema=True)
+
+# Write to HDFS in Parquet format
+output_path = "hdfs://path/to/hdfs/output"
+query = df.writeStream.format("parquet").option("path", output_path).option("checkpointLocation", "/tmp/checkpoint").start()
+
+query.awaitTermination()
+Q4: Java MapReduce WordCount
+Steps:
+Write a Java MapReduce program to process a file (e.g., README.txt).
+Compile and run using Hadoop.
+Code Example:
+java
+Copy code
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+public class WordCount {
+    public static class TokenizerMapper extends Mapper<Object, Text, Text, IntWritable> {
+        private final static IntWritable one = new IntWritable(1);
+        private Text word = new Text();
+
+        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+            StringTokenizer itr = new StringTokenizer(value.toString());
+            while (itr.hasMoreTokens()) {
+                word.set(itr.nextToken());
+                context.write(word, one);
+            }
+        }
+    }
+
+    public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            context.write(key, new IntWritable(sum));
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "word count");
+        job.setJarByClass(WordCount.class);
+        job.setMapperClass(TokenizerMapper.class);
+        job.setCombinerClass(IntSumReducer.class);
+        job.setReducerClass(IntSumReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+Compile & Run:
+bash
+Copy code
+# Compile
+javac -classpath `hadoop classpath` -d . WordCount.java
+jar -cvf WordCount.jar *.class
+
+# Run
+hadoop jar WordCount.jar WordCount /path/to/README.txt /path/to/output
+Let me know if you'd like further clarifications or help with setup!
+
+
+
+
+
+
+You said:
+How to start hbase she'll in hadoop
+ChatGPT said:
+ChatGPT
+To start the HBase shell in a Hadoop ecosystem, follow these steps:
+
+1. Ensure HBase is Installed and Running
+Verify that HBase is installed on your system.
+Start the HBase services:
+bash
+Copy code
+start-hbase.sh
+This will start HBase's Master and RegionServer processes.
+2. Start HBase Shell
+Once HBase is running, enter the HBase shell with the following command:
+bash
+Copy code
+hbase shell
+3. Verify HBase is Working
+In the HBase shell, you can test it by running basic commands:
+bash
+Copy code
+status
+This will display the current status of the HBase cluster.
+Additional Tips
+Configuration: Ensure the HBase configuration files (hbase-site.xml and hbase-env.sh) are correctly set up, including proper paths to Hadoop (HDFS) and Zookeeper.
+Zookeeper: If HBase relies on Zookeeper, make sure the Zookeeper service is running.
+Common Commands in HBase Shell
+List all tables:
+bash
+Copy code
+list
+Create a table:
+bash
+Copy code
+create 'mytable', 'mycolfamily1', 'mycolfamily2'
+Insert data:
+bash
+Copy code
+put 'mytable', 'row1', 'mycolfamily1:col1', 'value1'
+Retrieve data:
+bash
+Copy code
+get 'mytable', 'row1'
+Disable and drop a table:
+bash
+Copy code
+disable 'mytable'
+drop 'mytable'
